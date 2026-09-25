@@ -94,6 +94,17 @@ table.map td:first-child{font-weight:600;color:var(--main);white-space:nowrap}
 .mark.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .mrow input{margin-top:8px;font-size:.85rem}
 
+/* 照合マトリクス */
+.matrixwrap{overflow-x:auto;margin:12px -20px;padding:0 20px}
+table.matrix{border-collapse:separate;border-spacing:0;min-width:100%}
+table.matrix th,table.matrix td{border:1px solid var(--sub);padding:4px;background:var(--paper)}
+table.matrix thead th{font-size:.72rem;line-height:1.5;color:var(--main);background:var(--sub);min-width:92px;max-width:120px;vertical-align:bottom;padding:8px 6px;font-weight:600}
+table.matrix .fcol{position:sticky;left:0;z-index:2;background:var(--paper);font-size:.8rem;font-weight:600;color:var(--main);min-width:96px;max-width:120px;text-align:left;padding:8px;line-height:1.5}
+table.matrix thead .fcol{background:var(--sub)}
+.mcell{width:100%;min-width:60px;height:46px;border:none;background:none;font-size:1.1rem;color:var(--line);cursor:pointer}
+.mcell.on{color:var(--main);font-weight:700}
+details.memo{background:var(--paper)}
+
 /* 結果 */
 .voice{border-left:3px solid var(--accent);padding:4px 0 4px 16px;margin:14px 0}
 .voice p{font-family:var(--serif);font-size:1.12rem;line-height:1.9;color:var(--main);margin:6px 0}
@@ -241,7 +252,7 @@ table.map td:first-child{font-weight:600;color:var(--main);white-space:nowrap}
   <p class="count" id="fieldCount"></p>
 
   <h3>じぶんの軸と照らす</h3>
-  <p class="soft">それぞれのマスを「◎＝とても当てはまる／〇＝当てはまる／△＝やや当てはまる／×＝当てはまらない／？＝分からない」で答えてください。差が出なければ、〇の中から◎を探します。</p>
+  <p class="soft">縦がフィールド、横があなたの軸です。マスをタップするたびに「◎＝とても当てはまる／〇＝当てはまる／△＝やや当てはまる／×＝当てはまらない／？＝分からない」の順で切り替わります。軸が多いときは表を横にスワイプできます。そう評価した理由は、表の下のメモ欄に残せます。差が出なければ、〇の中から◎を探します。</p>
   <div id="ratingBox"></div>
 
   <details class="ex"><summary>Aさんの記入例を見る</summary><div class="inner exlist">
@@ -503,36 +514,53 @@ function addCustomField(){
  if(!S.fields.includes(v)&&S.fields.length<3)S.fields.push(v);
  el.value="";save(true);renderFieldChips();renderRatings();
 }
+const MARK_CYCLE=["","◎","〇","△","×","？"];
 function renderRatings(){
  const box=document.getElementById("ratingBox");box.innerHTML="";
  if(!S.must.length){box.innerHTML='<p class="soft">ステップ2でTOP5を選ぶと、ここに照合表が出ます。</p>';return;}
  if(!S.fields.length){box.innerHTML='<p class="soft">上でフィールドを選ぶと、ここに照合表が出ます。</p>';return;}
+ const wrap=document.createElement("div");wrap.className="matrixwrap";
+ const tbl=document.createElement("table");tbl.className="matrix";
+ const thead=document.createElement("thead");
+ const hr=document.createElement("tr");
+ hr.innerHTML='<th class="fcol">フィールド</th>'+S.must.map(m=>`<th>${m}</th>`).join("");
+ thead.appendChild(hr);tbl.appendChild(thead);
+ const tb=document.createElement("tbody");
  S.fields.forEach(f=>{
    if(!S.ratings[f])S.ratings[f]={};
-   const card=document.createElement("div");card.className="fieldcard";
-   card.innerHTML=`<h4>${f}</h4>`;
-   S.must.forEach((m,i)=>{
+   const tr=document.createElement("tr");
+   const th=document.createElement("th");th.className="fcol";th.textContent=f;
+   tr.appendChild(th);
+   S.must.forEach(m=>{
      if(!S.ratings[f][m])S.ratings[f][m]={mark:"",memo:""};
-     const row=document.createElement("div");row.className="mrow";
-     row.innerHTML=`<p class="mtext">${m}</p><div class="marks"></div>
-       <input type="text" placeholder="メモ（そう評価した理由）">`;
-     const marks=row.querySelector(".marks");
-     MARKS.forEach(mk=>{
-       const b=document.createElement("button");
-       b.className="mark"+(S.ratings[f][m].mark===mk?" on":"");
-       b.textContent=mk;
-       b.onclick=()=>{
-         S.ratings[f][m].mark=(S.ratings[f][m].mark===mk)?"":mk;
-         save(true);renderRatings();
-       };
-       marks.appendChild(b);
-     });
-     const memo=row.querySelector("input");
-     memo.value=S.ratings[f][m].memo||"";
-     memo.addEventListener("input",()=>{S.ratings[f][m].memo=memo.value;queueSave();});
-     card.appendChild(row);
+     const td=document.createElement("td");
+     const b=document.createElement("button");
+     const cur=S.ratings[f][m].mark||"";
+     b.className="mcell"+(cur?" on":"");
+     b.textContent=cur||"―";
+     b.onclick=()=>{
+       const i=MARK_CYCLE.indexOf(S.ratings[f][m].mark||"");
+       S.ratings[f][m].mark=MARK_CYCLE[(i+1)%MARK_CYCLE.length];
+       save(true);renderRatings();
+     };
+     td.appendChild(b);tr.appendChild(td);
    });
-   box.appendChild(card);
+   tb.appendChild(tr);
+ });
+ tbl.appendChild(tb);wrap.appendChild(tbl);box.appendChild(wrap);
+ S.fields.forEach(f=>{
+   const d=document.createElement("details");d.className="memo";
+   d.innerHTML=`<summary>「${f}」の理由メモ</summary><div class="inner"></div>`;
+   const inner=d.querySelector(".inner");
+   S.must.forEach(m=>{
+     const lab=document.createElement("label");lab.className="f";lab.textContent=m;
+     const inp=document.createElement("input");inp.type="text";
+     inp.placeholder="そう評価した理由";
+     inp.value=(S.ratings[f][m]&&S.ratings[f][m].memo)||"";
+     inp.addEventListener("input",()=>{S.ratings[f][m].memo=inp.value;queueSave();});
+     inner.appendChild(lab);inner.appendChild(inp);
+   });
+   box.appendChild(d);
  });
 }
 
@@ -565,12 +593,12 @@ function renderResult(){
  html+='</table></div>';
 
  if(S.fields.length&&S.must.length){
-   html+='<div class="resblock"><h3>フィールド照合</h3><table class="restable"><tr><th>じぶんの軸</th>';
-   S.fields.forEach(f=>html+=`<th>${esc(f)}</th>`);
+   html+='<div class="resblock"><h3>フィールド照合</h3><table class="restable"><tr><th>フィールド</th>';
+   S.must.forEach(m=>html+=`<th>${esc(m)}</th>`);
    html+='</tr>';
-   S.must.forEach(m=>{
-     html+=`<tr><td>${esc(m)}</td>`;
-     S.fields.forEach(f=>{
+   S.fields.forEach(f=>{
+     html+=`<tr><td>${esc(f)}</td>`;
+     S.must.forEach(m=>{
        const r=(S.ratings[f]||{})[m]||{};
        html+=`<td>${esc(r.mark)||"—"}</td>`;
      });
