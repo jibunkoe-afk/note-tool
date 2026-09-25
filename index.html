@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>じぶんの声を聴くノート（看護師版）</title>
+<style>
+:root{
+  --main:#3E5A6B;      /* 暖色側に寄せた藍 */
+  --sub:#F5E8DA;       /* 淡いアプリコット */
+  --accent:#D98A5B;    /* 深めた夜明けの橙 */
+  --base:#FAF5EE;      /* 血色のある生成り */
+  --paper:#FFFCF7;     /* カード・入力欄の紙色 */
+  --line:#C9BCAC;      /* 暖かいグレージュ */
+  --ink:#3D3A34;
+  --ink-soft:#7A7266;
+  --sans:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic","YuGothic","Noto Sans JP",sans-serif;
+  --serif:var(--sans);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--base);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.9}
+body{padding-bottom:96px}
+.wrap{max-width:560px;margin:0 auto;padding:0 20px}
+h1,h2,h3,.serif{font-family:var(--serif);font-weight:600;color:var(--main);letter-spacing:.04em}
+h2{font-size:1.25rem;line-height:1.6;margin-bottom:6px}
+h3{font-size:1.02rem;margin:26px 0 8px}
+p{margin:10px 0}
+.soft{color:var(--ink-soft);font-size:.86rem;line-height:1.8}
+a{color:var(--main)}
+button{font-family:var(--sans);cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 進捗 */
+.progress{position:sticky;top:0;z-index:20;background:var(--base);border-bottom:1px solid var(--sub);padding:10px 0 8px}
+.progress .wrap{display:flex;gap:4px;align-items:center;justify-content:space-between}
+.pstep{flex:1;text-align:center;font-size:.72rem;color:var(--ink-soft);padding-top:8px;border-top:3px solid var(--sub);transition:border-color .2s,color .2s;cursor:pointer}
+.pstep.on{border-top-color:var(--main);color:var(--main);font-weight:600}
+.pstep.done{border-top-color:var(--line)}
+
+/* 画面 */
+.screen{display:none;padding:28px 0 40px}
+.screen.show{display:block}
+.lead{font-family:var(--serif);font-size:1.05rem;line-height:2.1;color:var(--main);margin:10px 0 18px}
+
+/* カード・欄 */
+.card{background:var(--paper);border:1px solid var(--sub);border-radius:10px;padding:16px;margin:14px 0}
+.card.tint{background:var(--sub);border-color:var(--sub)}
+label.f{display:block;font-size:.8rem;color:var(--ink-soft);margin:10px 0 4px}
+input[type=text],textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:10px 12px;font-size:.95rem;font-family:var(--sans);line-height:1.7;color:var(--ink)}
+textarea{min-height:76px;resize:vertical}
+input:focus,textarea:focus{border-color:var(--main);outline:none}
+
+/* ボタン */
+.btn{display:inline-block;border:none;border-radius:999px;padding:13px 28px;font-size:.95rem;font-weight:600}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.quiet{background:var(--paper);border:1px solid var(--line);color:var(--ink)}
+.btn.ghost{background:none;border:none;color:var(--ink-soft);font-size:.82rem;text-decoration:underline;padding:8px}
+.navbar{position:fixed;left:0;right:0;bottom:0;background:rgba(250,245,238,.96);border-top:1px solid var(--sub);padding:12px 0;z-index:30}
+.navbar .wrap{display:flex;justify-content:space-between;gap:10px}
+.navbar .btn{flex:1;text-align:center}
+
+/* 折りたたみ */
+details{border:1px solid var(--sub);border-radius:10px;background:var(--paper);margin:12px 0}
+details summary{list-style:none;cursor:pointer;padding:12px 16px;font-size:.88rem;color:var(--main);font-weight:600}
+details summary::before{content:"＋ ";color:var(--accent)}
+details[open] summary::before{content:"－ "}
+details .inner{padding:0 16px 14px;border-top:1px dashed var(--sub)}
+details.ex{background:var(--sub);border-color:var(--sub)}
+.exlist{font-size:.88rem;line-height:1.9}
+.exlist li{margin:6px 0 6px 1.2em}
+
+/* チップ */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:8px 14px;font-size:.88rem;color:var(--ink);transition:background .15s,border-color .15s}
+.chip.on{background:var(--main);border-color:var(--main);color:#fff}
+.chip.axis{border-style:dashed}
+.count{font-size:.82rem;color:var(--ink-soft)}
+
+/* 地図テーブル */
+.mapscroll{overflow-x:auto;margin:12px -20px;padding:0 20px}
+table.map{border-collapse:collapse;width:100%;min-width:520px;font-size:.82rem;line-height:1.6}
+table.map th{background:var(--main);color:#fff;font-weight:600;padding:8px;text-align:left;white-space:nowrap}
+table.map td{border-bottom:1px solid var(--sub);padding:8px;vertical-align:top;background:var(--paper)}
+table.map td:first-child{font-weight:600;color:var(--main);white-space:nowrap}
+
+/* 照合カード */
+.fieldcard{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0}
+.fieldcard h4{font-family:var(--serif);color:var(--main);font-size:1rem;margin-bottom:8px}
+.mrow{border-top:1px dashed var(--sub);padding:10px 0}
+.mrow .mtext{font-size:.9rem;font-weight:600;margin-bottom:6px}
+.marks{display:flex;gap:6px}
+.mark{width:42px;height:38px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:1rem}
+.mark.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.mrow input{margin-top:8px;font-size:.85rem}
+
+/* 結果 */
+.voice{border-left:3px solid var(--accent);padding:4px 0 4px 16px;margin:14px 0}
+.voice p{font-family:var(--serif);font-size:1.12rem;line-height:1.9;color:var(--main);margin:6px 0}
+.resblock{margin:22px 0}
+.resblock h3{margin-top:0}
+.restable{width:100%;border-collapse:collapse;font-size:.85rem}
+.restable th,.restable td{border-bottom:1px solid var(--sub);padding:7px 6px;text-align:left;vertical-align:top}
+.restable th{color:var(--ink-soft);font-weight:600;font-size:.78rem}
+.next li{margin:6px 0 6px 1.2em}
+
+/* トースト */
+#toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--main);color:#fff;font-size:.8rem;padding:7px 18px;border-radius:999px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:40}
+#toast.show{opacity:.92}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="wrap">
+  <div class="pstep" data-p="0">ホーム</div>
+  <div class="pstep" data-p="1">1 振り返り</div>
+  <div class="pstep" data-p="2">2 軸整理</div>
+  <div class="pstep" data-p="3">3 照合</div>
+  <div class="pstep" data-p="4">結果</div>
+</div></div>
+
+<!-- ========== 画面0 ホーム ========== -->
+<section class="screen" id="s0"><div class="wrap">
+  <h1 style="font-size:1.5rem;line-height:1.7;margin:18px 0 4px">じぶんの声を聴くノート</h1>
+  <p class="soft" style="margin-top:0">看護師版</p>
+  <p class="lead">人の声を聴きつづけてきたあなたが、<br>今日は、じぶんの声を聴く番です。</p>
+  <p>このノートは、「夜勤をやめたい」「働き方を変えたい」と感じたとき、求人を探す前に、自分が働くうえで大切にしていることを言葉にするためのツールです。つらかったことも、嬉しかったことも、どちらもあなたの声として扱います。</p>
+  <div class="card tint">
+    <p style="margin:0"><strong>進め方</strong></p>
+    <p style="margin:6px 0 0;font-size:.9rem">3つのステップに、順番に答えていきます。所要時間は30分〜1時間ほど。一気にやる必要はありません。入力は自動でこの端末に保存され、いつでも続きから再開できます。</p>
+  </div>
+  <p class="soft">心身が特に落ちている日は、無理に振り返りを進めず、休むことを優先してください。過去を掘り返す作業は、それなりに体力を使います。元気のある日に、少しずつで大丈夫です。</p>
+  <p style="margin-top:22px"><button class="btn primary" id="startBtn" onclick="goto(1)">はじめる</button></p>
+  <p style="margin-top:26px" class="soft">
+    このノートに書いた内容は、あなたの端末の中にだけ保存されます。作者を含め、外部に送信されることは一切ありません。<br>
+    家族と共有している端末で使う場合は、終わったら下の「データを消す」を押してください。<br>
+    ブラウザのデータ削除で入力内容も消えるため、大事な結果は最後の画面から必ずコピーまたは画像で保存してください。
+  </p>
+  <p><button class="btn ghost" onclick="resetAll()">最初からやり直す（データを消す）</button></p>
+</div></section>
+
+<!-- ========== 画面1 振り返り ========== -->
+<section class="screen" id="s1"><div class="wrap">
+  <h2>ステップ1｜振り返り</h2>
+  <p>これまでの看護師人生を棚卸しします。書くのは経歴ではなく、「場面」と「そのときの気持ちの理由」です。</p>
+
+  <h3>満足度が低かった場面を、3つまで</h3>
+  <p class="soft">夜勤のつらかった場面から書き始めてOKです。このノートを開こうと思った瞬間の気持ちこそ、いちばん新しい材料です。書いていて気分が沈んできたら、先に下の「高かった場面」から書いてください。3つそろわなくても進めます。</p>
+  <details class="ex"><summary>記入例を見る（いろいろな観点）</summary><div class="inner exlist">
+    <ul>
+      <li><strong>身体のしんどさ</strong>：夜勤明けで一日つぶれて、休みのはずなのに何もできなかった</li>
+      <li><strong>責任・プレッシャー</strong>：人が少ない夜勤帯で急変が重なり、自分の判断が正しいのかずっと張り詰めていた</li>
+      <li><strong>人間関係</strong>：質問しづらい雰囲気の職場で、出勤前から気が重かった時期</li>
+      <li><strong>家族・生活</strong>：家族や友人と生活リズムが合わず、予定を何度も諦めた月</li>
+      <li><strong>仕事の中身</strong>：忙しさに追われて、一人ひとりの患者さんに向き合えていないと感じた日</li>
+      <li><strong>将来への不安</strong>：「この生活をあと何年続けられるんだろう」と思った夜勤明けの帰り道</li>
+    </ul>
+  </div></details>
+  <div id="lowBox"></div>
+  <label class="f">3つに共通するもの（一言で。空欄でもOK）</label>
+  <input type="text" data-k="lowCommon" placeholder="例：張り詰めた状態が続く／生活が犠牲になる">
+
+  <h3>満足度が高かった場面を、3つまで</h3>
+  <p class="soft">「看護師でよかった」と思えた瞬間、楽しかった時期、印象に残っている患者さんとのやりとり。小さなことで構いません。</p>
+  <details class="ex"><summary>記入例を見る（いろいろな観点）</summary><div class="inner exlist">
+    <ul>
+      <li><strong>患者さんとの関わり</strong>：受け持ちの患者さんが退院のとき「あなたでよかった」と言ってくれた</li>
+      <li><strong>成長・手応え</strong>：初めて急変対応をやり切れて、自分の成長を感じた夜</li>
+      <li><strong>人・チーム</strong>：気兼ねなく相談し合える病棟で働けていた時期</li>
+      <li><strong>教える・支える</strong>：後輩の指導を任され、その子が独り立ちしたとき</li>
+      <li><strong>生活との両立</strong>：希望休が通って、家族や友人とゆっくり過ごせた月</li>
+      <li><strong>現場を良くする仕事</strong>：委員会や勉強会の企画など、仕組みを良くする側の役割が楽しかったとき</li>
+      <li><strong>学生時代</strong>：実習で患者さんとじっくり話せて、看護師になりたい気持ちが強まった日</li>
+    </ul>
+  </div></details>
+  <div id="highBox"></div>
+  <label class="f">3つに共通するもの（一言で。空欄でもOK）</label>
+  <input type="text" data-k="highCommon" placeholder="例：一人の人とじっくり関わる／誰かの回復に立ち会う">
+
+  <p class="soft">共通点が見つからないときは、無理にまとめず次へ。ステップ2の問いに答えるうちに見えてくることが多いです。</p>
+  <details class="ex"><summary>Aさん（架空の例・7年目・病棟・既婚）の記入例を見る</summary><div class="inner exlist">
+    <p><strong>低かった場面</strong></p>
+    <ul>
+      <li>夜勤で急変対応が重なった夜。人が少ない中で自分の判断が正しいのか、ずっと張り詰めていた</li>
+      <li>夫と休みが合わず、連休の予定を3回続けてキャンセルした月。何のために働いているのかわからなくなった</li>
+      <li>2年目、先輩に質問できない雰囲気の病棟にいた時期。出勤前に毎朝胃が痛かった</li>
+    </ul>
+    <p><strong>高かった場面</strong></p>
+    <ul>
+      <li>受け持ちだった患者さんが退院時に「あなたでよかった」と手紙をくれたとき</li>
+      <li>後輩の指導係になり、その子が一人で夜勤に入れるようになったとき</li>
+      <li>学生時代の実習で、認知症の患者さんとじっくり話せた日</li>
+    </ul>
+    <p><strong>共通点</strong>：低かった場面は「張り詰めた状態が続く」「生活が犠牲になる」。高かった場面は「一人の人とじっくり関わる」「誰かの成長や回復に立ち会う」。</p>
+  </div></details>
+</div></section>
+
+<!-- ========== 画面2 軸整理 ========== -->
+<section class="screen" id="s2"><div class="wrap">
+  <h2>ステップ2｜軸整理</h2>
+  <p>ステップ1で書いたものは、「何があるとつらく、何があると満たされるか」の生データです。これを、選べる条件のかたちに翻訳します。視点は4つ。それぞれの問いに、答えやすいものだけ答えて、最後に「この軸でいちばん大事なもの」を選んでください。</p>
+  <div id="axesBox"></div>
+
+  <h3>大切にしたいことTOP5を選ぶ</h3>
+  <p class="soft">各軸で書いた「いちばん大事なもの」が下に並びます。この中から、<strong>大切にしたいことTOP5を、大切な順に</strong>タップしてください（まずは3つでもOKです）。条件だけでなく、「こういう看護がしたい」「こうありたい」といったプラスの願いも、ぜひ混ぜてください。</p>
+  <div class="chips" id="mustChips"></div>
+  <p class="count" id="mustCount"></p>
+
+  <details class="ex"><summary>Aさんの記入例を見る</summary><div class="inner exlist">
+    <ul>
+      <li>理念・目的：一人の人とじっくり関わる看護がしたい</li>
+      <li>仕事内容：瞬発力より、継続的なケアに手応えがある</li>
+      <li>人・風土：質問しやすい、心理的に安全な関係</li>
+      <li>待遇・環境：手取り24万円以上。夫と休みが合うこと</li>
+    </ul>
+    <p><strong>Aさんが大切にしたいことTOP3</strong>：①一人の人とじっくり関われる ②手取り24万円以上 ③生活リズムが夫と合う</p>
+  </div></details>
+  <p class="soft">「本当にこれでいいのか」と正解を探し始めたら、その必要はありません。この順位は鉛筆書きです。次のステップで照らして「違うな」と思ったら、ここに戻って直せます。</p>
+</div></section>
+
+<!-- ========== 画面3 フィールド照合 ========== -->
+<section class="screen" id="s3"><div class="wrap">
+  <h2>ステップ3｜フィールド照合</h2>
+  <p>フィールド＝働く場・環境のこと。転職先の業態だけでなく、いまの職場内の別部署への異動も含みます。その前に、大事なことをひとつ。看護師の働く場は、あなたが思っているより広いです。まず全体の地図を見てください。</p>
+
+  <h3>看護師の働く場の地図</h3>
+  <div class="mapscroll"><table class="map" id="mapTable">
+    <tr><th>分類</th><th>どんな場か</th><th>夜勤・オンコールの傾向</th></tr>
+  </table></div>
+  <p class="soft">この表がすべてではありません。ここにない働く場も多くあります。</p>
+
+  <h3>気になるフィールドを2〜3個選ぶ</h3>
+  <p class="soft">「夜勤がない」だけで選ばず、自分の大切にしたいことが満たせそうかで選ぶのがコツです。知らないフィールドを選んでも構いません。「知らない」は「合わない」ではないからです。</p>
+  <div id="fieldChips"></div>
+  <div style="display:flex;gap:8px;margin-top:6px">
+    <input type="text" id="customField" placeholder="この中にない場合は自由に追加" style="flex:1">
+    <button class="btn quiet" onclick="addCustomField()" style="padding:10px 16px">追加</button>
+  </div>
+  <p class="count" id="fieldCount"></p>
+
+  <h3>じぶんの軸と照らす</h3>
+  <p class="soft">それぞれのマスを「◎＝とても当てはまる／〇＝当てはまる／△＝やや当てはまる／×＝当てはまらない／？＝分からない」で答えてください。差が出なければ、〇の中から◎を探します。</p>
+  <div id="ratingBox"></div>
+
+  <details class="ex"><summary>Aさんの記入例を見る</summary><div class="inner exlist">
+    <p>訪問看護：じっくり関われる＝◎／手取り24万＝？／夫とリズムが合う＝〇（オンコール次第）</p>
+    <p>クリニック：じっくり関われる＝△／手取り24万＝△／夫とリズムが合う＝◎</p>
+    <p>院内の外来へ異動：じっくり関われる＝△／手取り24万＝〇／夫とリズムが合う＝〇</p>
+    <p>Aさんの場合、訪問看護が有力だが「？」が残る。次にやることは応募ではなく、「訪問看護の給与とオンコール手当を調べる」になります。</p>
+  </div></details>
+
+  <h3>仮説を言葉にする</h3>
+  <p class="soft">最後に、ここまでの答えを一つの文章にします。</p>
+  <div class="card">
+    <p style="font-size:.92rem;line-height:2.3">
+      わたしは <input type="text" data-k="hypA" placeholder="大切にしたいこと" style="width:100%"> を大切にしたいから、<br>
+      <input type="text" data-k="hypB" placeholder="フィールド" style="width:100%"> を見てみたい。<br>
+      そのために、まず <input type="text" data-k="hypC" placeholder="調べること・やること" style="width:100%"> を調べる。
+    </p>
+  </div>
+  <p class="soft">「？」が多くても落ち込まなくて大丈夫です。「？」は情報が足りないだけで、あなたの適性の問題ではありません。どのフィールドも×だらけになったら、順位や中身を見直すサイン。ステップ2に戻って、上位に置いたものが本当にいまの自分の願いか、確かめてください。</p>
+</div></section>
+
+<!-- ========== 画面4 結果 ========== -->
+<section class="screen" id="s4"><div class="wrap">
+  <h2>あなたの声</h2>
+  <p class="soft">ここまでに書いたことを、1枚にまとめました。</p>
+  <div id="resultBox"></div>
+  <p style="display:flex;gap:10px;margin-top:20px">
+    <button class="btn primary" style="flex:1" onclick="copyResult()">テキストをコピー</button>
+    <button class="btn quiet" style="flex:1" onclick="saveImage()">画像で保存</button>
+  </p>
+  <p class="soft">この結果は端末を替えたり、ブラウザのデータを消したりすると失われます。消える前に、コピーか画像で必ず手元に残してください。</p>
+  <div class="card tint" style="margin-top:24px">
+    <p style="font-size:.9rem;margin:0">書き出してみて「一人では整理しきれない」と感じた方へ。この結果を持ってきていただければ、そこから一緒に考える個別のキャリア面談を行っています。</p>
+    <p style="margin:8px 0 0;font-size:.9rem"><a href="REPLACE_CONSULT_URL">面談のご案内はこちら</a>　／　<a href="REPLACE_NOTE_URL">note記事に戻る</a></p>
+  </div>
+  <p class="soft" style="margin-top:18px">※本ツールは、note記事をご購入いただいた方の個人利用に限ります。転載・再配布はご遠慮ください。<br>入力内容はこの端末の中にだけ保存され、外部には一切送信されません。共有端末の場合は、下のボタンでデータを消してから閉じてください。</p>
+  <p><button class="btn ghost" onclick="resetAll()">データを消す</button></p>
+</div></section>
+
+<nav class="navbar" id="navbar" style="display:none"><div class="wrap">
+  <button class="btn quiet" id="prevBtn" onclick="nav(-1)">もどる</button>
+  <button class="btn primary" id="nextBtn" onclick="nav(1)">つぎへ</button>
+</div></nav>
+
+<div id="toast">保存しました</div>
+
+<script>
+"use strict";
+const KEY="jibun-koe-note-v1";
+const AXES=[
+ {id:"phi",name:"理念・目的",sub:"どんな看護・どんな貢献をしたいか",
+  rep:["どんな患者さんに関わっているとき、いちばん「看護師でよかった」と思えますか？","夜勤明けの帰り道に浮かぶのは、「とにかく休みたい、生活を立て直したい」という気持ちですか。それとも「このままでは、自分のやりたい看護ができない」という気持ちですか。どちらが大きいですか？"],
+  bank:["治す（急性期）・支える（慢性期・生活）・防ぐ（予防・教育）——どれにいちばん気持ちが向きますか？","看護師を目指したきっかけは、いまの自分の中でも生きていますか？","地域や社会に対して「こうなったらいいのに」と思うことはありますか？","職場の理念や方針に共感できることは、どれくらい大事ですか？"]},
+ {id:"pro",name:"仕事内容",sub:"どんな業務・関わり方に手応えを感じるか",
+  rep:["急性期・回復期・慢性期・療養——患者さんのどの時期のケアが、いちばん自分に合っていますか？","急変対応のような瞬発力の仕事と、じっくり関わるケア、どちらに手応えを感じますか？"],
+  bank:["これまで経験した（実習で見たものも含む）診療科で、面白かったのはどこですか？ 合わなかったのはどこですか？ それはなぜ？","処置や医療行為をたくさんやりたいですか？ それとも生活支援・予防・教育の比重が大きいほうがいいですか？","認定看護師・専門看護師・特定行為研修など、専門を深める道に興味はありますか？ それとも幅広く経験したいですか？","「自分で判断する場面」が多い仕事と、チームで分担する仕事、どちらが合いますか？"]},
+ {id:"peo",name:"人・風土",sub:"どんな人と、どんな関係性で働きたいか",
+  rep:["夜勤帯の少人数の関係と、日勤の大所帯の関係、どちらが自分には楽でしたか？","少人数で距離が近い職場と、大所帯で程よく距離がある職場、どちらが耐えやすいですか？"],
+  bank:["どんな先輩・上司のもとでいちばん伸びましたか？ しんどかったのはどんな関係でしたか？","医師や他職種（リハ・介護職など）との距離感は、どれくらいが心地いいですか？","職場の人との仕事以外の付き合いは、あったほうがいいですか？","患者さん・利用者さんとの距離は、近いほうがいいですか？ 一定を保ちたいですか？"]},
+ {id:"pri",name:"待遇・環境",sub:"給与・時間・休みなど、生活の条件",
+  rep:["夜勤手当がなくなった場合、手取りがいくらまでなら生活が成り立ちますか？（具体的な金額で）","家族や自分の生活リズムと、どこまで勤務を合わせたいですか？"],
+  bank:["給与・休み・通勤時間・残業の少なさを、大事な順に並べると？","オンコール（夜間の呼び出し待機）は許容できますか？ できるなら月何回まで？","土日休みと平日休み、どちらが生活に合いますか？","5年後の生活（家族・住まい・学びたいこと）を考えたとき、必要になる条件は？"]}
+];
+const MAP=[
+ ["病院","高度急性期〜急性期〜回復期〜慢性期・療養、精神科など、機能で働き方が大きく異なります。オペ室・透析室・健診部門など、病棟以外の日勤中心の部署もあります","病棟は夜勤あり。機能により忙しさの質が違う"],
+ ["外来・クリニック","病院の外来、無床クリニック。院内の異動で外来に移る道もあります","夜勤なしが基本。クリニックは日祝休み多め"],
+ ["訪問・在宅","訪問看護ステーション、在宅診療への同行など","夜勤なし・オンコールありが多い"],
+ ["介護・福祉","特養、老健、有料老人ホーム、デイサービスなど","施設により夜勤あり。求人ごとに要確認"],
+ ["美容・自費診療","美容クリニック、健診センターなど","完全日勤が多い。接遇・案内の要素あり"],
+ ["企業","産業保健（企業内の健康管理）、治験（CRC・CRA）、保健指導のコールセンターなど","夜勤なし。土日休みが多い"],
+ ["行政・教育など","保健所・市町村、学校、保育園など","夜勤なし。募集数は少なめ"]
+];
+const FIELD_GROUPS=[
+ {name:"いまの職場の中で",items:["院内異動（外来・オペ室・透析室・健診部門など）","夜勤回数・配置の調整を相談する"]},
+ {name:"職場を変える",items:["病院（日勤中心の部署）","クリニック","訪問看護","美容クリニック","健診センター","治験（CRC・CRA）","産業保健（企業）","行政（保健所・市町村）","保育園","介護施設"]}
+];
+const MARKS=["◎","〇","△","×","？"];
+
+let S=load();
+function blank(){return{
+ screen:0,
+ low:[{ev:"",why:""},{ev:"",why:""},{ev:"",why:""}],
+ high:[{ev:"",why:""},{ev:"",why:""},{ev:"",why:""}],
+ lowCommon:"",highCommon:"",
+ axes:{},must:[],fields:[],custom:[],
+ ratings:{}, hypA:"",hypB:"",hypC:""
+};}
+function load(){
+ try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.axes)return Object.assign(blank(),d);}catch(e){}
+ return blank();
+}
+let saveTimer=null,toastTimer=null;
+function save(showToast){
+ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+ if(showToast!==false){
+   clearTimeout(toastTimer);
+   const t=document.getElementById("toast");
+   t.classList.add("show");
+   toastTimer=setTimeout(()=>t.classList.remove("show"),900);
+ }
+}
+function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(true),700);}
+
+/* ---------- 画面遷移 ---------- */
+function goto(n){
+ S.screen=n;save(false);
+ document.querySelectorAll(".screen").forEach(el=>el.classList.remove("show"));
+ document.getElementById("s"+n).classList.add("show");
+ document.querySelectorAll(".pstep").forEach(el=>{
+   const p=+el.dataset.p;
+   el.classList.toggle("on",p===n);
+   el.classList.toggle("done",p<n);
+ });
+ const nb=document.getElementById("navbar");
+ nb.style.display=(n>=1&&n<=4)?"block":"none";
+ const nx=document.getElementById("nextBtn");
+ nx.style.display=(n===4)?"none":"block";
+ nx.textContent=(n===3)?"結果を見る":"つぎへ";
+ if(n===2)renderMustChips();
+ if(n===3){renderFieldChips();renderRatings();}
+ if(n===4)renderResult();
+ window.scrollTo(0,0);
+}
+function nav(d){goto(Math.min(4,Math.max(0,S.screen+d)));}
+
+/* ---------- 汎用バインド ---------- */
+function bindInputs(root){
+ (root||document).querySelectorAll("[data-k]").forEach(el=>{
+   el.value=S[el.dataset.k]||"";
+   el.addEventListener("input",()=>{S[el.dataset.k]=el.value;queueSave();});
+ });
+}
+
+/* ---------- ステップ1 ---------- */
+function sceneRows(kind,box){
+ const wrap=document.getElementById(box);
+ wrap.innerHTML="";
+ S[kind].forEach((row,i)=>{
+   const c=document.createElement("div");c.className="card";
+   c.innerHTML=`<p class="soft" style="margin:0">${i+1}つめ</p>
+     <label class="f">出来事・場面</label><input type="text" data-kind="${kind}" data-i="${i}" data-f="ev">
+     <label class="f">そう感じた理由</label><input type="text" data-kind="${kind}" data-i="${i}" data-f="why">`;
+   wrap.appendChild(c);
+ });
+ wrap.querySelectorAll("input").forEach(el=>{
+   el.value=S[el.dataset.kind][+el.dataset.i][el.dataset.f]||"";
+   el.addEventListener("input",()=>{S[el.dataset.kind][+el.dataset.i][el.dataset.f]=el.value;queueSave();});
+ });
+}
+
+/* ---------- ステップ2 ---------- */
+function renderAxes(){
+ const box=document.getElementById("axesBox");box.innerHTML="";
+ AXES.forEach(ax=>{
+   if(!S.axes[ax.id])S.axes[ax.id]={free:"",top1:"",top2:""};
+   const d=document.createElement("details");
+   if(ax.id==="phi")d.open=true;
+   d.innerHTML=`<summary>${ax.name}｜${ax.sub}</summary><div class="inner">
+     <p class="soft" style="margin-top:10px">${ax.rep.map(q=>"・"+q).join("<br>")}</p>
+     <label class="f">思いついたことを自由に</label>
+     <textarea data-ax="${ax.id}" data-f="free"></textarea>
+     <label class="f">この軸でいちばん大事なもの（1つ。多くても2つ）</label>
+     <input type="text" data-ax="${ax.id}" data-f="top1" placeholder="例：一人の人とじっくり関われる">
+     <input type="text" data-ax="${ax.id}" data-f="top2" placeholder="（2つめがあれば）" style="margin-top:6px">
+     <details style="margin-top:10px"><summary>もっと問いが欲しい方はこちら</summary><div class="inner">
+       <p class="soft" style="margin-top:8px">${ax.bank.map(q=>"・"+q).join("<br>")}</p>
+     </div></details>
+   </div>`;
+   box.appendChild(d);
+ });
+ box.querySelectorAll("[data-ax]").forEach(el=>{
+   el.value=S.axes[el.dataset.ax][el.dataset.f]||"";
+   el.addEventListener("input",()=>{
+     S.axes[el.dataset.ax][el.dataset.f]=el.value;queueSave();
+     if(el.dataset.f!=="free")renderMustChips();
+   });
+ });
+}
+function topsList(){
+ const arr=[];
+ AXES.forEach(ax=>{
+   const a=S.axes[ax.id]||{};
+   [a.top1,a.top2].forEach(v=>{if(v&&v.trim())arr.push({ax:ax.name,text:v.trim()});});
+ });
+ return arr;
+}
+function renderMustChips(){
+ const tops=topsList();
+ S.must=S.must.filter(m=>tops.some(t=>t.text===m));
+ const box=document.getElementById("mustChips");box.innerHTML="";
+ if(!tops.length){box.innerHTML='<p class="soft">上の4つの軸で「いちばん大事なもの」を書くと、ここに並びます。</p>';}
+ tops.forEach(t=>{
+   const b=document.createElement("button");
+   b.className="chip"+(S.must.includes(t.text)?" on":"");
+   b.textContent=t.text;
+   b.title=t.ax;
+   b.onclick=()=>{
+     if(S.must.includes(t.text)){S.must=S.must.filter(x=>x!==t.text);}
+     else{
+       if(S.must.length>=5){flashCount("選べるのは5つまでです。");return;}
+       S.must.push(t.text);
+     }
+     save(true);renderMustChips();
+   };
+   box.appendChild(b);
+ });
+ document.getElementById("mustCount").textContent=S.must.length?`選択中：${S.must.length}個（大切な順に・5つまで）`:"";
+}
+function flashCount(msg){
+ const el=document.getElementById("mustCount");el.textContent=msg;
+ setTimeout(renderMustChips,1800);
+}
+
+/* ---------- ステップ3 ---------- */
+function renderMap(){
+ const t=document.getElementById("mapTable");
+ MAP.forEach(r=>{
+   const tr=document.createElement("tr");
+   tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`;
+   t.appendChild(tr);
+ });
+}
+function allFieldChoices(){return FIELD_GROUPS.flatMap(g=>g.items).concat(S.custom);}
+function chipFor(f){
+ const b=document.createElement("button");
+ b.className="chip"+(S.fields.includes(f)?" on":"");
+ b.textContent=f;
+ b.onclick=()=>{
+   if(S.fields.includes(f)){S.fields=S.fields.filter(x=>x!==f);}
+   else{
+     if(S.fields.length>=3){document.getElementById("fieldCount").textContent="いちどに比べるのは3つまで。まず絞ってみてください。";setTimeout(updFieldCount,1800);return;}
+     S.fields.push(f);
+   }
+   save(true);renderFieldChips();renderRatings();
+ };
+ return b;
+}
+function renderFieldChips(){
+ const box=document.getElementById("fieldChips");box.innerHTML="";
+ const groups=FIELD_GROUPS.concat(S.custom.length?[{name:"自分で追加したもの",items:S.custom}]:[]);
+ groups.forEach(g=>{
+   const h=document.createElement("p");
+   h.className="soft";h.style.margin="12px 0 0";h.textContent=g.name;
+   box.appendChild(h);
+   const row=document.createElement("div");row.className="chips";row.style.marginTop="6px";
+   g.items.forEach(f=>row.appendChild(chipFor(f)));
+   box.appendChild(row);
+ });
+ updFieldCount();
+}
+function updFieldCount(){
+ document.getElementById("fieldCount").textContent=S.fields.length?`選択中：${S.fields.length}個`:"";
+}
+function addCustomField(){
+ const el=document.getElementById("customField");
+ const v=el.value.trim();
+ if(!v)return;
+ if(!allFieldChoices().includes(v))S.custom.push(v);
+ if(!S.fields.includes(v)&&S.fields.length<3)S.fields.push(v);
+ el.value="";save(true);renderFieldChips();renderRatings();
+}
+function renderRatings(){
+ const box=document.getElementById("ratingBox");box.innerHTML="";
+ if(!S.must.length){box.innerHTML='<p class="soft">ステップ2でTOP5を選ぶと、ここに照合表が出ます。</p>';return;}
+ if(!S.fields.length){box.innerHTML='<p class="soft">上でフィールドを選ぶと、ここに照合表が出ます。</p>';return;}
+ S.fields.forEach(f=>{
+   if(!S.ratings[f])S.ratings[f]={};
+   const card=document.createElement("div");card.className="fieldcard";
+   card.innerHTML=`<h4>${f}</h4>`;
+   S.must.forEach((m,i)=>{
+     if(!S.ratings[f][m])S.ratings[f][m]={mark:"",memo:""};
+     const row=document.createElement("div");row.className="mrow";
+     row.innerHTML=`<p class="mtext">${m}</p><div class="marks"></div>
+       <input type="text" placeholder="メモ（そう評価した理由）">`;
+     const marks=row.querySelector(".marks");
+     MARKS.forEach(mk=>{
+       const b=document.createElement("button");
+       b.className="mark"+(S.ratings[f][m].mark===mk?" on":"");
+       b.textContent=mk;
+       b.onclick=()=>{
+         S.ratings[f][m].mark=(S.ratings[f][m].mark===mk)?"":mk;
+         save(true);renderRatings();
+       };
+       marks.appendChild(b);
+     });
+     const memo=row.querySelector("input");
+     memo.value=S.ratings[f][m].memo||"";
+     memo.addEventListener("input",()=>{S.ratings[f][m].memo=memo.value;queueSave();});
+     card.appendChild(row);
+   });
+   box.appendChild(card);
+ });
+}
+
+/* ---------- 結果 ---------- */
+function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function nextActions(){
+ const acts=[];
+ S.fields.forEach(f=>{
+   S.must.forEach(m=>{
+     const r=(S.ratings[f]||{})[m];
+     if(r&&r.mark==="？")acts.push(`「${f}」の「${m}」について調べる`);
+   });
+ });
+ return acts;
+}
+function renderResult(){
+ const box=document.getElementById("resultBox");
+ let html="";
+ html+='<div class="resblock"><h3>大切にしたいこと（大切な順）</h3><div class="voice">';
+ if(S.must.length){S.must.forEach(m=>html+=`<p>${esc(m)}</p>`);}
+ else{html+='<p class="soft">（未選択です。ステップ2で選べます）</p>';}
+ html+='</div></div>';
+
+ html+='<div class="resblock"><h3>4つの軸で、いちばん大事なもの</h3><table class="restable">';
+ AXES.forEach(ax=>{
+   const a=S.axes[ax.id]||{};
+   const v=[a.top1,a.top2].filter(x=>x&&x.trim()).join("／");
+   html+=`<tr><th>${ax.name}</th><td>${esc(v)||"—"}</td></tr>`;
+ });
+ html+='</table></div>';
+
+ if(S.fields.length&&S.must.length){
+   html+='<div class="resblock"><h3>フィールド照合</h3><table class="restable"><tr><th>じぶんの軸</th>';
+   S.fields.forEach(f=>html+=`<th>${esc(f)}</th>`);
+   html+='</tr>';
+   S.must.forEach(m=>{
+     html+=`<tr><td>${esc(m)}</td>`;
+     S.fields.forEach(f=>{
+       const r=(S.ratings[f]||{})[m]||{};
+       html+=`<td>${esc(r.mark)||"—"}</td>`;
+     });
+     html+='</tr>';
+   });
+   html+='</table></div>';
+ }
+
+ if(S.hypA||S.hypB||S.hypC){
+   html+=`<div class="resblock"><h3>いまの仮説</h3><div class="voice"><p>わたしは${esc(S.hypA)||"◯◯"}を大切にしたいから、<br>${esc(S.hypB)||"△△"}を見てみたい。<br>そのために、まず${esc(S.hypC)||"□□"}を調べる。</p></div></div>`;
+ }
+
+ const acts=nextActions();
+ if(acts.length){
+   html+='<div class="resblock"><h3>次にやること（「？」を埋める）</h3><ul class="next">';
+   acts.forEach(a=>html+=`<li>${esc(a)}</li>`);
+   html+='</ul></div>';
+ }
+ html+='<p class="serif" style="font-size:1rem;margin-top:26px">これが、いまのあなたの声です。<br>ここから先は、いつ動いても、動かなくても、あなたが決めていいことです。</p>';
+ box.innerHTML=html;
+}
+function buildText(){
+ const L=[];
+ L.push("■ じぶんの声を聴くノート（看護師版）｜結果");
+ L.push("");
+ L.push("【大切にしたいこと（大切な順）】");
+ if(S.must.length)S.must.forEach((m,i)=>L.push(`${i+1}. ${m}`));else L.push("（未選択）");
+ L.push("");
+ L.push("【4つの軸で、いちばん大事なもの】");
+ AXES.forEach(ax=>{
+   const a=S.axes[ax.id]||{};
+   const v=[a.top1,a.top2].filter(x=>x&&x.trim()).join("／");
+   L.push(`・${ax.name}：${v||"—"}`);
+ });
+ if(S.fields.length&&S.must.length){
+   L.push("");
+   L.push("【フィールド照合】");
+   S.fields.forEach(f=>{
+     const parts=S.must.map(m=>{
+       const r=(S.ratings[f]||{})[m]||{};
+       return `${m}＝${r.mark||"—"}${r.memo?("("+r.memo+")"):""}`;
+     });
+     L.push(`・${f}：${parts.join("／")}`);
+   });
+ }
+ if(S.hypA||S.hypB||S.hypC){
+   L.push("");
+   L.push("【いまの仮説】");
+   L.push(`わたしは${S.hypA||"◯◯"}を大切にしたいから、${S.hypB||"△△"}を見てみたい。そのために、まず${S.hypC||"□□"}を調べる。`);
+ }
+ const acts=nextActions();
+ if(acts.length){
+   L.push("");
+   L.push("【次にやること】");
+   acts.forEach(a=>L.push("・"+a));
+ }
+ return L.join("\n");
+}
+function copyResult(){
+ const text=buildText();
+ const done=()=>{const t=document.getElementById("toast");t.textContent="コピーしました";t.classList.add("show");setTimeout(()=>{t.classList.remove("show");t.textContent="保存しました";},1200);};
+ if(navigator.clipboard&&navigator.clipboard.writeText){
+   navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+ }else fallbackCopy(text,done);
+}
+function fallbackCopy(text,done){
+ const ta=document.createElement("textarea");
+ ta.value=text;document.body.appendChild(ta);ta.select();
+ try{document.execCommand("copy");done();}catch(e){alert("コピーできませんでした。画像保存をお試しください。");}
+ document.body.removeChild(ta);
+}
+/* 画像保存：canvasに描画 */
+function saveImage(){
+ const W=1080,pad=70,lh=52;
+ const lines=[];
+ function push(t,style){wrapText(t,style==="h1"?26:(style==="h2"?20:16),W-pad*2,style).forEach(x=>lines.push(x));}
+ function wrapText(text,size,maxW,style){
+   const c=document.createElement("canvas").getContext("2d");
+   c.font=fontFor(size,style);
+   const out=[];let cur="";
+   for(const ch of text){
+     if(c.measureText(cur+ch).width>maxW){out.push({t:cur,size,style});cur=ch;}
+     else cur+=ch;
+   }
+   if(cur)out.push({t:cur,size,style});
+   if(!out.length)out.push({t:"",size,style});
+   return out;
+ }
+ function fontFor(size,style){
+   const serif=(style==="h1"||style==="h2"||style==="voice");
+   return `${style==="h2"||style==="h1"||style==="voice"?"600":"400"} ${size*2}px ${serif?'"Hiragino Maru Gothic ProN","BIZ UDPGothic","Yu Gothic",sans-serif':'"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif'}`;
+ }
+ buildText().split("\n").forEach(t=>{
+   if(t.startsWith("■"))push(t.replace("■ ",""),"h1");
+   else if(t.startsWith("【"))push(t,"h2");
+   else push(t,"body");
+ });
+ const H=pad*2+lines.length*lh+40;
+ const cv=document.createElement("canvas");cv.width=W*1;cv.height=H;
+ const ctx=cv.getContext("2d");
+ ctx.fillStyle="#FAF5EE";ctx.fillRect(0,0,W,H);
+ ctx.fillStyle="#D98A5B";ctx.fillRect(0,0,W,10);
+ let y=pad+30;
+ lines.forEach(l=>{
+   ctx.font=fontFor(l.size/2*1.0,l.style).replace(/(\d+)px/,(m,n)=>Math.round(l.size*1.9)+"px");
+   ctx.fillStyle=(l.style==="h1"||l.style==="h2")?"#3E5A6B":"#3D3A34";
+   ctx.fillText(l.t,pad,y);
+   y+=lh;
+ });
+ ctx.font='400 24px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+ ctx.fillStyle="#7A7266";
+ ctx.fillText("じぶんの声を聴くノート（看護師版）",pad,H-34);
+ const a=document.createElement("a");
+ a.href=cv.toDataURL("image/png");
+ a.download="じぶんの声を聴くノート_結果.png";
+ a.click();
+}
+function resetAll(){
+ if(!confirm("入力した内容をすべて消して、最初からやり直します。よろしいですか？"))return;
+ localStorage.removeItem(KEY);
+ S=blank();
+ location.reload();
+}
+
+/* ---------- 起動 ---------- */
+sceneRows("low","lowBox");
+sceneRows("high","highBox");
+renderAxes();
+renderMap();
+bindInputs();
+const hasData=topsList().length||S.low.some(r=>r.ev)||S.high.some(r=>r.ev);
+if(hasData){document.getElementById("startBtn").textContent="続きから";}
+document.querySelectorAll(".pstep").forEach(el=>{el.addEventListener("click",()=>goto(+el.dataset.p));});
+goto(S.screen||0);
+</script>
+</body>
+</html>
